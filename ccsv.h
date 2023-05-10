@@ -24,7 +24,8 @@ typedef struct ccsv_Result {
 	size_t len;
 } ccsv_Result;
 
-bool ccsv_parse(const char *src, ccsv_Result *dest, ccsv_Error *err);
+bool ccsv_parse(const char *src, ccsv_Result *dest, ccsv_Error *err, size_t *idx);
+const char *ccsv_Error_tostring(ccsv_Error e);
 void ccsv_Result_destroy(ccsv_Result* r);
 
 #define _CCSV_H

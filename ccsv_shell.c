@@ -2,12 +2,14 @@
 #include "ccsv.h"
 
 int main(void) {
-	const char* csv = "aargh,vlarg,morb\nfoo,bar,baz";
+	const char* csv = "aargh,\" vlarg \"\" \",morb\nfoo,bar,baz";
 
 	ccsv_Result r;
 	ccsv_Error e;
-	if (!ccsv_parse(csv, &r, &e)) {
-		fprintf(stderr, "Failed to parse.\n");
+	size_t i;
+	if (!ccsv_parse(csv, &r, &e, &i)) {
+		fprintf(stderr, "Failed to parse: %s\n", ccsv_Error_tostring(e));
+		fprintf(stderr, "%s\n^", &csv[i]);
 		return 1;
 	}
 
@@ -16,7 +18,7 @@ int main(void) {
 		const ccsv_Line *l = &r.mem[i];
 		for (size_t j = 0; j < l->len; j++) {
 			const ccsv_Cell *c = &l->mem[j];
-			printf("[ %.*s ] ", (int)c->len, c->mem);
+			printf("[.%.*s.] ", (int)c->len, c->mem);
 		}
 		printf("\n");
 	}
