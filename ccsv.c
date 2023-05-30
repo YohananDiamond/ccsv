@@ -24,19 +24,6 @@ typedef enum ccsv_InParseResult {
 	CCSV_IPR_OOM,
 } ccsv_InParseResult;
 
-#define ccsv_Buf_new(T) \
-	(T) { .mem = 0, .len = 0 }
-#define ccsv_Buf_push(T, buf, val)                                     \
-	if (buf.mem) {                                                 \
-		buf.mem = realloc(buf.mem, (buf.len + 1) * sizeof(T)); \
-		buf.mem[buf.len] = val;                                \
-		buf.len++;                                             \
-	} else {                                                       \
-		buf.mem = malloc(sizeof(T));                           \
-		buf.mem[0] = val;                                      \
-		buf.len = 1;                                           \
-	}
-
 static ccsv_InParseResult ccsv_Cell_unquote_raw(const char *src, size_t len, ccsv_Cell *r) {
 	// the biggest size we can imagine (whole string, except surrounding
 	// quotes, and with a slot for the NUL character)
@@ -106,7 +93,7 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 
 		// Found escaped quote
 		if (is_quoted) {
-			if (c == '"' && src[i+1] == '"') {
+			if (c == '"' && src[i + 1] == '"') {
 				i += 2;
 				continue;
 			}
@@ -116,7 +103,8 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 				// TODO: handle text after quote finishes, but
 				// before cell text finishes.
 				{
-					ccsv_InParseResult code = ccsv_Cell_unquote_raw(&src[*index], (i - *index), cell);
+					ccsv_InParseResult code =
+					    ccsv_Cell_unquote_raw(&src[*index], (i - *index), cell);
 					*index = i + 1;
 					return code;
 				}
