@@ -2,16 +2,19 @@ CC := gcc
 CFLAGS := -Wall -Wpedantic -std=c99
 BUILD_DIR := build
 
-all: library executable
+OBJ := $(BUILD_DIR)/ccsv.o
+EXE := $(BUILD_DIR)/ccsv
 
-library:
+all: $(OBJ) $(EXE)
+
+$(OBJ):
 	mkdir -p $(BUILD_DIR)
-	$(CC) -c ccsv.c -o $(BUILD_DIR)/ccsv.o $(CFLAGS)
+	$(CC) -c ccsv.c -o $@ $(CFLAGS)
 
-executable: library
-	$(CC) $(BUILD_DIR)/ccsv.o ccsv_shell.c -o $(BUILD_DIR)/ccsv $(CFLAGS)
+$(EXE): $(OBJ)
+	$(CC) $(BUILD_DIR)/ccsv.o ccsv_shell.c -o $@ $(CFLAGS)
 
-run: executable
+run: $(EXE)
 	./run-tests.sh
 
-.PHONY: all library executable run
+.PHONY: all run
