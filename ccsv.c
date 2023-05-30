@@ -1,5 +1,6 @@
 #include "ccsv.h"
 
+#include <stdio.h> // FIXME: just for debug
 #include <stdlib.h>
 
 // "In" means Internal here.
@@ -68,7 +69,10 @@ static ccsv_InParseResult ccsv_Cell_unquote_raw(const char *src, size_t len, ccs
 }
 
 static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_Cell *cell) {
-	int i = *index;
+	// FIXME: parse("foo,") should result in ["foo", ""]
+
+	size_t start = *index;
+	size_t i = start;
 
 	if (src[i] == '\0') return CCSV_IPR_EOF;
 
@@ -83,6 +87,11 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 		*index = i + 1;
 		return CCSV_IPR_NEWLINE;
 	}
+
+	// skip leading whitespace
+	for (; src[i] == ' '; i++);
+	size_t skipped_amount = i - start;
+	start = i;
 
 	bool is_quoted = src[i] == '"';
 	if (is_quoted) // skip first char already
@@ -100,14 +109,23 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 
 			switch (c) {
 			case '"':
-				// TODO: handle text after quote finishes, but
-				// before cell text finishes.
-				{
-					ccsv_InParseResult code =
-					    ccsv_Cell_unquote_raw(&src[*index], (i - *index), cell);
-					*index = i + 1;
-					return code;
+				while (false); // dummy statement
+
+				// Ignore trailing space, and error on
+				// any other thing found
+				size_t skip_trailing = i + 1;
+				for (;; skip_trailing++) {
+					char c = src[skip_trailing];
+					if (c == '\n' || c == '\0' || c == ',') break;
+					if (c == ' ') continue;
+					printf("@(%ld): %c\n", skip_trailing, c);
+					return CCSV_IPR_BADQUOTE;
 				}
+
+				ccsv_InParseResult code =
+				    ccsv_Cell_unquote_raw(&src[start], (i - *index), cell);
+				*index = skip_trailing;
+				return code;
 			case '\0':
 				// Oh no! Input finished before finishing quote!
 				return CCSV_IPR_BADQUOTE;
@@ -121,14 +139,28 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 		case '\n':
 		case '\r':
 		case '\0':
-			cell->mem = &src[*index];
-			cell->len = i - (*index);
+			// trim whitespace
+			/* end = i; */
+			/* if (end > 0) end--; */
+			/* for (; end > 0 && is_whitespace(src[end]); end--); */
+			/* end++; */
+
+			start -= skipped_amount;
+			cell->mem = &src[start];
+			cell->len = i - start;
 			cell->is_allocated = false;
 			*index = i;
 			return CCSV_IPR_NORMALCELL;
 		case ',':
-			cell->mem = &src[*index];
-			cell->len = i - (*index);
+			// trim whitespace
+			/* end = i; */
+			/* if (end > 0) end--; */
+			/* for (; end > 0 && is_whitespace(src[end]); end--); */
+			/* end++; */
+
+			start -= skipped_amount;
+			cell->mem = &src[start];
+			cell->len = i - start;
 			cell->is_allocated = false;
 			*index = i + 1;
 			return CCSV_IPR_NORMALCELL;
