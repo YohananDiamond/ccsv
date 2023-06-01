@@ -1,6 +1,5 @@
 #include "ccsv.h"
 
-#include <stdio.h> // FIXME: just for debug
 #include <stdlib.h>
 
 // "In" means Internal here.
@@ -11,12 +10,11 @@ typedef enum ccsv_InParseResult {
 	// Finished a quoted cell.
 	CCSV_IPR_QUOTEDCELL,
 
-	// Finished a cell.
-	CCSV_IPR_NORMALCELL,
+	// Found a comma.
+	CCSV_IPR_COMMA,
 
-	// Finished the line (encountered newline)
-	// `cell` unmodified.
-	CCSV_IPR_NEWLINE,
+	// End-of-line (be it a '\n', '\r\n', '\r' or EOF)
+	CCSV_IPR_EOL,
 
 	// End-of-file (string finished)
 	CCSV_IPR_EOF,
@@ -74,20 +72,6 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 	size_t start = *index;
 	size_t i = start;
 
-	if (src[i] == '\0') return CCSV_IPR_EOF;
-
-	// "\r\n"
-	if (src[i] == '\r' && src[i + 1] == '\n') {
-		*index = i + 2;
-		return CCSV_IPR_NEWLINE;
-	}
-
-	// '\n' or '\r'
-	if (src[i] == '\n' || src[i] == '\r') {
-		*index = i + 1;
-		return CCSV_IPR_NEWLINE;
-	}
-
 	// skip leading whitespace
 	for (; src[i] == ' '; i++);
 	size_t skipped_amount = i - start;
@@ -118,7 +102,6 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 					char c = src[skip_trailing];
 					if (c == '\n' || c == '\0' || c == ',') break;
 					if (c == ' ') continue;
-					printf("@(%ld): %c\n", skip_trailing, c);
 					return CCSV_IPR_BADQUOTE;
 				}
 
@@ -135,35 +118,37 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 			continue;
 		}
 
+		// "\r\n"
+		if (src[i] == '\r' && src[i + 1] == '\n') {
+			*index = i + 2;
+			return CCSV_IPR_EOL;
+		}
+
 		switch (c) {
 		case '\n':
 		case '\r':
-		case '\0':
-			// trim whitespace
-			/* end = i; */
-			/* if (end > 0) end--; */
-			/* for (; end > 0 && is_whitespace(src[end]); end--); */
-			/* end++; */
-
 			start -= skipped_amount;
 			cell->mem = &src[start];
 			cell->len = i - start;
 			cell->is_allocated = false;
-			*index = i;
-			return CCSV_IPR_NORMALCELL;
-		case ',':
-			// trim whitespace
-			/* end = i; */
-			/* if (end > 0) end--; */
-			/* for (; end > 0 && is_whitespace(src[end]); end--); */
-			/* end++; */
 
+			*index = i + 1;
+			return CCSV_IPR_EOL;
+		case '\0':
+			start -= skipped_amount;
+			cell->mem = &src[start];
+			cell->len = i - start;
+			cell->is_allocated = false;
+
+			*index = i + 1;
+			return CCSV_IPR_EOF;
+		case ',':
 			start -= skipped_amount;
 			cell->mem = &src[start];
 			cell->len = i - start;
 			cell->is_allocated = false;
 			*index = i + 1;
-			return CCSV_IPR_NORMALCELL;
+			return CCSV_IPR_COMMA;
 		case '"':
 			return CCSV_IPR_BADQUOTE;
 		}
@@ -197,16 +182,24 @@ bool ccsv_parse(const char *src, ccsv_Result *dest, ccsv_Error *err, size_t *idx
 				return false;
 			}
 			// fallthrough
-		case CCSV_IPR_NORMALCELL:
+		case CCSV_IPR_COMMA:
 			ccsv_Buf_push(ccsv_Cell, current_line, c);
 			c.mem = NULL;
 			c.len = 0;
 			break;
-		case CCSV_IPR_NEWLINE:
+		case CCSV_IPR_EOL:
+			ccsv_Buf_push(ccsv_Cell, current_line, c);
+			c.mem = NULL;
+			c.len = 0;
+
 			ccsv_Buf_push(ccsv_Line, (*dest), current_line);
 			current_line = ccsv_Buf_new(ccsv_Line);
 			break;
 		case CCSV_IPR_EOF:
+			ccsv_Buf_push(ccsv_Cell, current_line, c);
+			c.mem = NULL;
+			c.len = 0;
+
 			if (current_line.len != 0) {
 				ccsv_Buf_push(ccsv_Line, (*dest), current_line);
 			}

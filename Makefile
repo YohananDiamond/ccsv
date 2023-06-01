@@ -15,7 +15,7 @@ $(OBJ): ccsv.c $(HED)
 $(TEST): $(OBJ) test.c $(HED)
 	$(CC) $^ -o $@ $(CFLAGS)
 
-run:
+run: $(TEST)
 	./$(TEST)
 
 .PHONY: all run
