@@ -1,12 +1,4 @@
 TODO
-* Refactor code to use errno-style error handling
-* Document the functions
-
-ABANDONED
-* Custom delimiters (anything except \r, \n and ")
-* Actually make the executable useful for command-line (get cell by coordinates, get line length, get cell by line number + column header name etc)
-    * CLI argument parsing needs to be worked on as well :)))
-* make install
 
 DONE
 * Initial functionality
@@ -15,3 +7,11 @@ DONE
 * Check if anything else is missing (compare to csv-spec.org)
     * https://csv-spec.org/spec/0.9.0-draft.2.html
     * Seems okay!
+* Document the functions
+
+ABANDONED
+* Custom delimiters (anything except \r, \n and ")
+* Actually make the executable useful for command-line (get cell by coordinates, get line length, get cell by line number + column header name etc)
+    * CLI argument parsing needs to be worked on as well :)))
+* make install
+* Refactor code to use errno-style error handling

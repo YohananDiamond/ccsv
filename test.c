@@ -47,7 +47,7 @@ int main(void) {
 		const ccsv_Line *l = &r.mem[i];
 		for (size_t j = 0; j < l->len; j++) {
 			const ccsv_Cell *c = &l->mem[j];
-			printf("[.%.*s.] ", (int)c->len, c->mem);
+			printf("[.%.*s.] ", (int)c->len, c->mem.ref);
 		}
 		printf("\n");
 	}

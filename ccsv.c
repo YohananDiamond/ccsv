@@ -59,16 +59,14 @@ static ccsv_InParseResult ccsv_Cell_unquote_raw(const char *src, size_t len, ccs
 		}
 	}
 
-	r->mem = mem;
-	r->len = mem_i;
 	r->is_allocated = true;
+	r->mem.alloc = mem;
+	r->len = mem_i;
 
 	return CCSV_IPR_QUOTEDCELL;
 }
 
 static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_Cell *cell) {
-	// FIXME: parse("foo,") should result in ["foo", ""]
-
 	size_t start = *index;
 	size_t i = start;
 
@@ -128,25 +126,25 @@ static ccsv_InParseResult ccsv_Cell_parse(const char *src, size_t *index, ccsv_C
 		case '\n':
 		case '\r':
 			start -= skipped_amount;
-			cell->mem = &src[start];
-			cell->len = i - start;
 			cell->is_allocated = false;
+			cell->mem.ref = &src[start];
+			cell->len = i - start;
 
 			*index = i + 1;
 			return CCSV_IPR_EOL;
 		case '\0':
 			start -= skipped_amount;
-			cell->mem = &src[start];
-			cell->len = i - start;
 			cell->is_allocated = false;
+			cell->mem.ref = &src[start];
+			cell->len = i - start;
 
 			*index = i + 1;
 			return CCSV_IPR_EOF;
 		case ',':
 			start -= skipped_amount;
-			cell->mem = &src[start];
-			cell->len = i - start;
 			cell->is_allocated = false;
+			cell->mem.ref = &src[start];
+			cell->len = i - start;
 			*index = i + 1;
 			return CCSV_IPR_COMMA;
 		case '"':
@@ -184,12 +182,12 @@ bool ccsv_parse(const char *src, ccsv_Result *dest, ccsv_Error *err, size_t *idx
 			// fallthrough
 		case CCSV_IPR_COMMA:
 			ccsv_Buf_push(ccsv_Cell, current_line, c);
-			c.mem = NULL;
+			c.mem.ref = NULL;
 			c.len = 0;
 			break;
 		case CCSV_IPR_EOL:
 			ccsv_Buf_push(ccsv_Cell, current_line, c);
-			c.mem = NULL;
+			c.mem.ref = NULL;
 			c.len = 0;
 
 			ccsv_Buf_push(ccsv_Line, (*dest), current_line);
@@ -197,7 +195,7 @@ bool ccsv_parse(const char *src, ccsv_Result *dest, ccsv_Error *err, size_t *idx
 			break;
 		case CCSV_IPR_EOF:
 			ccsv_Buf_push(ccsv_Cell, current_line, c);
-			c.mem = NULL;
+			c.mem.ref = NULL;
 			c.len = 0;
 
 			if (current_line.len != 0) {
@@ -209,7 +207,7 @@ bool ccsv_parse(const char *src, ccsv_Result *dest, ccsv_Error *err, size_t *idx
 			*err = CCSV_ERR_OOM;
 			return false;
 		default:
-			// FIXME: UNEXPECTED - HOW TO HANDLE THIS?
+			*err = CCSV_ERR_INTERNAL;
 			break;
 		}
 	}
@@ -224,9 +222,9 @@ void ccsv_Result_destroy(ccsv_Result *r) {
 
 		for (int j = 0; j < line->len; j++) {
 			const ccsv_Cell *cell = &line->mem[j];
-			if (!cell->mem || !cell->is_allocated) continue;
+			if (!cell->mem.ref || !cell->is_allocated) continue;
 
-			free((void *) cell->mem);
+			free(cell->mem.alloc);
 		}
 
 		free(line->mem);
@@ -241,6 +239,8 @@ const char *ccsv_Error_tostring(ccsv_Error e) {
 		return "Out of memory";
 	case CCSV_ERR_INVALID:
 		return "Invalid input";
+	case CCSV_ERR_INTERNAL:
+		return "Internal error";
 	default:
 		return "???";
 	}
